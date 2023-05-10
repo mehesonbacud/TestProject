@@ -1,0 +1,339 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccounts_newstorageaccount20964_name": {
+      "type": "String"
+    },
+    "storageAccounts_newstorageaccount4249_name": {
+      "type": "String"
+    },
+    "storageAccounts_test6bg4an4f5mbiu_name": {
+      "type": "String"
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2021-09-01",
+      "kind": "StorageV2",
+      "location": "canadaeast",
+      "name": "[parameters('storageAccounts_newstorageaccount20964_name')]",
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": true,
+        "encryption": {
+          "keySource": "Microsoft.Storage",
+          "services": {
+            "blob": {
+              "enabled": true,
+              "keyType": "Account"
+            },
+            "file": {
+              "enabled": true,
+              "keyType": "Account"
+            }
+          }
+        },
+        "minimumTlsVersion": "TLS1_0",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow",
+          "ipRules": [],
+          "virtualNetworkRules": []
+        },
+        "supportsHttpsTrafficOnly": true
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "kind": "StorageV2",
+      "location": "canadaeast",
+      "name": "[parameters('storageAccounts_newstorageaccount4249_name')]",
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": true,
+        "encryption": {
+          "keySource": "Microsoft.Storage",
+          "services": {
+            "blob": {
+              "enabled": true,
+              "keyType": "Account"
+            },
+            "file": {
+              "enabled": true,
+              "keyType": "Account"
+            }
+          }
+        },
+        "minimumTlsVersion": "TLS1_0",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow",
+          "ipRules": [],
+          "virtualNetworkRules": []
+        },
+        "supportsHttpsTrafficOnly": true
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "kind": "StorageV2",
+      "location": "canadacentral",
+      "name": "[parameters('storageAccounts_test6bg4an4f5mbiu_name')]",
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": true,
+        "encryption": {
+          "keySource": "Microsoft.Storage",
+          "services": {
+            "blob": {
+              "enabled": true,
+              "keyType": "Account"
+            },
+            "file": {
+              "enabled": true,
+              "keyType": "Account"
+            }
+          }
+        },
+        "minimumTlsVersion": "TLS1_0",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow",
+          "ipRules": [],
+          "virtualNetworkRules": []
+        },
+        "supportsHttpsTrafficOnly": true
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount20964_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount20964_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "allowPermanentDelete": false,
+          "enabled": false
+        }
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts/blobServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount4249_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount4249_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "allowPermanentDelete": false,
+          "enabled": false
+        }
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts/blobServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_test6bg4an4f5mbiu_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_test6bg4an4f5mbiu_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "allowPermanentDelete": false,
+          "enabled": false
+        }
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts/blobServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount20964_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount20964_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "protocolSettings": {
+          "smb": {}
+        },
+        "shareDeleteRetentionPolicy": {
+          "days": 7,
+          "enabled": true
+        }
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts/fileServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount4249_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount4249_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "protocolSettings": {
+          "smb": {}
+        },
+        "shareDeleteRetentionPolicy": {
+          "days": 7,
+          "enabled": true
+        }
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts/fileServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_test6bg4an4f5mbiu_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_test6bg4an4f5mbiu_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        },
+        "protocolSettings": {
+          "smb": {}
+        },
+        "shareDeleteRetentionPolicy": {
+          "days": 7,
+          "enabled": true
+        }
+      },
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "type": "Microsoft.Storage/storageAccounts/fileServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount20964_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount20964_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "type": "Microsoft.Storage/storageAccounts/queueServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount4249_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount4249_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "type": "Microsoft.Storage/storageAccounts/queueServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_test6bg4an4f5mbiu_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_test6bg4an4f5mbiu_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "type": "Microsoft.Storage/storageAccounts/queueServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount20964_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount20964_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "type": "Microsoft.Storage/storageAccounts/tableServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_newstorageaccount4249_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_newstorageaccount4249_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "type": "Microsoft.Storage/storageAccounts/tableServices"
+    },
+    {
+      "apiVersion": "2021-09-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_test6bg4an4f5mbiu_name'))]"
+      ],
+      "name": "[concat(parameters('storageAccounts_test6bg4an4f5mbiu_name'), '/default')]",
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      },
+      "type": "Microsoft.Storage/storageAccounts/tableServices"
+    }
+  ],
+  "variables": {}
+}

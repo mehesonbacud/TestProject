@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppPortalName": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "appServicePlanName": {
+      "type": "string"
+    },
+    "linuxFxVersion": {
+      "type": "string"
+    },
+    "resourceTags": {
+      "type": "object",
+      "defaultValue": {
+        "Environment": "Dev",
+        "Project": "Tutorial"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2020-12-01",
+      "name": "[parameters('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "sku": {
+        "name": "B1",
+        "tier": "Basic",
+        "size": "B1",
+        "family": "B",
+        "capacity": 1
+      },
+      "kind": "linux",
+      "properties": {
+        "perSiteScaling": false,
+        "reserved": true,
+        "targetWorkerCount": 0,
+        "targetWorkerSizeId": 0
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-12-01",
+      "name": "[parameters('webAppPortalName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+      ],
+      "tags": "[parameters('resourceTags')]",
+      "kind": "app",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+        "siteConfig": {
+          "linuxFxVersion": "[parameters('linuxFxVersion')]"
+        }
+      }
+    }
+  ]
+}

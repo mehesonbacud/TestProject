@@ -1,0 +1,44 @@
+# .circleci/config.yml
+
+# Specify the config version - version 2.1 is latest.
+version: 2.1
+
+parameters:
+  project_name:
+    default: FSharpTemplate
+    type: string
+  service_name:
+    default: fsharptemplate
+    type: string
+
+# Define the jobs for the current project.
+jobs:
+  build_test:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:6.0
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: dotnet build -c Release
+      - run:
+          name: Running Tests
+          command: dotnet test -c Release --logger "trx"
+
+workflows:
+  pull_requests:
+    unless:
+      equal: [ "main", << pipeline.git.branch >> ]
+    jobs:
+      - build_test
+
+  deploy_infrastructure:
+    when:
+      equal: [ "main", << pipeline.git.branch >> ]
+    jobs:
+      - build_test:
+          filters:
+            branches:
+              only:
+                - main

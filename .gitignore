@@ -1,0 +1,9 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+/Terraform/*.hcl
+/Terraform/*.info
+/Terraform/*.tfstate
+/Terraform/local.terraform.tfvars

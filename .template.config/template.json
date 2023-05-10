@@ -1,0 +1,36 @@
+{
+  "author": "Broadsign",
+  "name": "Broadsign FSharp Application",
+  "description": "A project for creating an FSharp application that has Circle CI config, DockerFile and Terraform.",
+  "identity": "Broadsign.FSharpApp.1.0",
+  "shortName": "broadsign-fsharpapp",
+  "tags": {
+    "language": "F#",
+    "type": "project"
+  },
+  "sourceName": "FSharpTemplate",
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "The target framework for the project.",
+      "datatype": "choice",
+      "choices": [
+        {
+          "choice": "net6.0"
+        }
+      ],
+      "defaultValue": "net6.0"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": [
+            "ap-fsharp-template.sln"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,356 @@
+# .circleci/config.yml
+
+# Specify the config version - version 2.1 is latest.
+version: 2.1
+# Specify Terraform version
+orbs:
+  terraform: circleci/terraform@3.1.0
+
+# Note: These are provided by the az-service-account-labs context
+# - CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID
+# - CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD
+
+# Note: These are provided by the az-service-account-preview context
+# - CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID
+# - CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD
+
+# Note: These are provided by the az-service-account-cloud context
+# - CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID
+# - CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD
+
+# Note: These are provided by the ayuda-acr-preview context
+# - AP_CONTAINER_REGISTRY_HOST
+# - AP_CONTAINER_REGISTRY_PASSWORD
+# - AP_CONTAINER_REGISTRY_USERNAME
+# - AP_USER_ASSIGNED_ENTITY_ID
+# - AP_USER_ASSIGNED_ENTITY_CLIENT_ID
+
+# Note: These are provided by the ayuda-acr context
+# - AP_CONTAINER_REGISTRY_HOST
+# - AP_CONTAINER_REGISTRY_PASSWORD
+# - AP_CONTAINER_REGISTRY_USERNAME
+# - AP_USER_ASSIGNED_ENTITY_ID
+# - AP_USER_ASSIGNED_ENTITY_CLIENT_ID
+
+# Note: These are provided by the az-resources-labs context
+# - AZ_SUBSCRIPTION_ID
+# - AZURE_BACKEND_RESOURCE_GROUP_NAME
+# - AZURE_BACKEND_STORAGE_ACCOUNT_NAME
+# - AZURE_BACKEND_TERRAFORM_KEY
+# - TERRAFORM_ENV_CONFIG_FILE
+# - APP_PLAN_RESOURCE_GROUP_NAME
+# - SERVICE_PLAN_NAME
+
+# Note: These are provided by the az-resources-preview context
+# - AZ_SUBSCRIPTION_ID
+# - AZURE_BACKEND_RESOURCE_GROUP_NAME
+# - AZURE_BACKEND_STORAGE_ACCOUNT_NAME
+# - AZURE_BACKEND_TERRAFORM_KEY
+# - TERRAFORM_ENV_CONFIG_FILE
+# - APP_PLAN_RESOURCE_GROUP_NAME
+# - SERVICE_PLAN_NAME
+
+# Note: These are provided by the az-resources-cloud context
+# - AZ_SUBSCRIPTION_ID
+# - AZURE_BACKEND_RESOURCE_GROUP_NAME
+# - AZURE_BACKEND_STORAGE_ACCOUNT_NAME
+# - AZURE_BACKEND_TERRAFORM_KEY
+# - TERRAFORM_ENV_CONFIG_FILE
+# - APP_PLAN_RESOURCE_GROUP_NAME
+# - SERVICE_PLAN_NAME
+
+# Note: These are provided by the az-resources context
+# - AZ_TENANT
+
+parameters:
+  project_name:
+    default: CIRCLECIPROJECTNAME
+    type: string
+  service_name:
+    default: CIRCLECISOLUTIONNAME
+    type: string
+  docker_name:
+    default: CIRCLECISOLUTIONNAME
+    type: string
+  terraform_backend_config_file:
+    default: backend.hcl
+    type: string
+
+# Define the jobs for the current project.
+jobs:
+  build_test:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:6.0
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: dotnet build -c Release
+      - run:
+          name: Running Tests
+          command: dotnet test -c Release --logger "trx"
+
+  #  other-unit-tests:
+  #    ToDo
+  #  integration-tests:
+  #    ToDo
+
+  build_image:
+    docker:
+      - image: circleci/buildpack-deps:latest
+    resource_class: small
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Docker login
+          command: echo $AP_CONTAINER_REGISTRY_PASSWORD | docker login $AP_CONTAINER_REGISTRY_HOST -u $AP_CONTAINER_REGISTRY_USERNAME --password-stdin
+      - run:
+          name: Build image
+          command: docker build --tag << pipeline.parameters.docker_name >>:build-<< pipeline.number >> --tag << pipeline.parameters.docker_name >>:latest .
+      - run:
+          name: Save Docker image
+          command: docker save -o << pipeline.parameters.docker_name >>_latest.tar "<< pipeline.parameters.docker_name >>:build-<< pipeline.number >>"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - << pipeline.parameters.docker_name >>_latest.tar
+
+  push_image:
+    docker:
+      - image: cimg/base:2021.04
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: ./
+      - setup_remote_docker
+      - run:
+          name: Docker login
+          command: echo $AP_CONTAINER_REGISTRY_PASSWORD | docker login $AP_CONTAINER_REGISTRY_HOST -u $AP_CONTAINER_REGISTRY_USERNAME --password-stdin
+      - run:
+          name: Load Docker image
+          command: docker load -i ./<< pipeline.parameters.docker_name >>_latest.tar
+      - run:
+          name: Tag image with build number
+          command: docker tag << pipeline.parameters.docker_name >>:build-<< pipeline.number >> "$AP_CONTAINER_REGISTRY_HOST/<< pipeline.parameters.docker_name >>:build-<< pipeline.number >>"
+      - run:
+          name: Tag image latest
+          command: docker tag << pipeline.parameters.docker_name >>:build-<< pipeline.number >> "$AP_CONTAINER_REGISTRY_HOST/<< pipeline.parameters.docker_name >>:latest"
+      - run:
+          name: Push image
+          command: docker push "$AP_CONTAINER_REGISTRY_HOST/<< pipeline.parameters.docker_name >>:build-<< pipeline.number >>"
+      - run:
+          name: Push image as latest
+          command: docker push "$AP_CONTAINER_REGISTRY_HOST/<< pipeline.parameters.docker_name >>:latest"
+
+  terraform_deployment_plan:
+    working_directory: /tmp/project
+    docker:
+      - image: docker.mirror.hashicorp.services/hashicorp/terraform:light
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: terraform plan
+          command: |
+            cd /tmp/project/Terraform
+            TERRAFORM_BACKEND_CONFIG_FILE=<< pipeline.parameters.terraform_backend_config_file >>
+            cat > /tmp/project/Terraform/$TERRAFORM_BACKEND_CONFIG_FILE \<< END
+            resource_group_name  = "$AZURE_BACKEND_RESOURCE_GROUP_NAME"
+            storage_account_name = "$AZURE_BACKEND_STORAGE_ACCOUNT_NAME"
+            container_name       = "$AZURE_BACKEND_STORAGE_ACCOUNT_NAME"
+            key                  = "<< pipeline.parameters.docker_name >>.$AZURE_BACKEND_TERRAFORM_KEY"
+            END
+            export ARM_SUBSCRIPTION_ID=$AZ_SUBSCRIPTION_ID
+            export ARM_CLIENT_ID=$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID
+            export ARM_CLIENT_SECRET=$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD
+            export ARM_TENANT_ID=$AZ_TENANT
+            SERVICE_NAME=<< pipeline.parameters.service_name >>
+            ENVIRONMENT_SUFFIX=`cat /tmp/project/Terraform/$TERRAFORM_ENV_CONFIG_FILE | grep environment_suffix | awk '{print $3}' | sed -e 's/^"//' -e 's/"$//'`
+            RESOURCE_GROUP_NAME=rg-$SERVICE_NAME$ENVIRONMENT_SUFFIX
+            DOCKER_CONTAINER_NAME=<< pipeline.parameters.docker_name >>
+            DOCKER_CONTAINER_TAG=build-<< pipeline.number >>
+            terraform init -backend-config=/tmp/project/Terraform/$TERRAFORM_BACKEND_CONFIG_FILE
+            terraform validate
+            cat >> /tmp/project/Terraform/$TERRAFORM_ENV_CONFIG_FILE \<< END
+            service_name = "$SERVICE_NAME"
+            azure_subscription_id = "$AZ_SUBSCRIPTION_ID"
+            azure_subscription_tenant_id = "$AZ_TENANT"
+            service_principal_appid = "$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID"
+            service_principal_password = "$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD"
+            docker_registry_server_url = "$AP_CONTAINER_REGISTRY_HOST"
+            docker_container_name = "$DOCKER_CONTAINER_NAME"
+            docker_container_tag = "$DOCKER_CONTAINER_TAG"
+            resource_group_name = "$APP_PLAN_RESOURCE_GROUP_NAME"
+            service_plan_name = "$SERVICE_PLAN_NAME"
+            user_assigned_identity_id = "$AP_USER_ASSIGNED_ENTITY_ID"
+            user_assigned_identity_client_id = "$AP_USER_ASSIGNED_ENTITY_CLIENT_ID"
+            END
+            terraform plan -var-file="$TERRAFORM_ENV_CONFIG_FILE"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./Terraform/<< pipeline.parameters.terraform_backend_config_file >>
+
+  terraform_deployment_apply:
+    working_directory: /tmp/project
+    docker:
+      - image: docker.mirror.hashicorp.services/hashicorp/terraform:light
+    resource_class: small
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./
+      - run:
+          name: terraform apply infrastructure
+          command: |
+            cd /tmp/project/Terraform
+            TERRAFORM_BACKEND_CONFIG_FILE=<< pipeline.parameters.terraform_backend_config_file >>
+            export ARM_SUBSCRIPTION_ID=$AZ_SUBSCRIPTION_ID
+            export ARM_CLIENT_ID=$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID
+            export ARM_CLIENT_SECRET=$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD
+            export ARM_TENANT_ID=$AZ_TENANT
+            terraform init -backend-config=/tmp/project/Terraform/$TERRAFORM_BACKEND_CONFIG_FILE
+            terraform validate
+            SERVICE_NAME=<< pipeline.parameters.service_name >>
+            RESOURCE_GROUP_NAME=rg-$SERVICE_NAME$ENVIRONMENT_SUFFIX            
+            DOCKER_CONTAINER_NAME=<< pipeline.parameters.docker_name >>
+            DOCKER_CONTAINER_TAG=build-<< pipeline.number >>
+            cat >> /tmp/project/Terraform/$TERRAFORM_ENV_CONFIG_FILE \<< END
+            service_name = "$SERVICE_NAME"
+            azure_subscription_id = "$AZ_SUBSCRIPTION_ID"
+            azure_subscription_tenant_id = "$AZ_TENANT"
+            service_principal_appid = "$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_ID"
+            service_principal_password = "$CIRCLECICONFIGPRINCIPALACCOUNT_SERVICE_APP_PASSWORD"
+            docker_registry_server_url = "$AP_CONTAINER_REGISTRY_HOST"  
+            docker_container_name = "$DOCKER_CONTAINER_NAME"
+            docker_container_tag = "$DOCKER_CONTAINER_TAG"
+            resource_group_name = "$APP_PLAN_RESOURCE_GROUP_NAME"
+            service_plan_name = "$SERVICE_PLAN_NAME"
+            user_assigned_identity_id = "$AP_USER_ASSIGNED_ENTITY_ID"
+            user_assigned_identity_client_id = "$AP_USER_ASSIGNED_ENTITY_CLIENT_ID"
+            END
+            terraform apply -auto-approve -var-file="$TERRAFORM_ENV_CONFIG_FILE"
+
+  service_health_check:
+    working_directory: /tmp/project
+    docker:
+      - image: cimg/base:2021.04
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: service deployment health check
+          command: |
+            ENVIRONMENT_SUFFIX=`cat /tmp/project/Terraform/$TERRAFORM_ENV_CONFIG_FILE | grep environment_suffix | awk '{print $3}' | sed -e 's/^"//' -e 's/"$//'`
+            SERVICE_NAME=as-<< pipeline.parameters.service_name >>$ENVIRONMENT_SUFFIX
+            OK_200=`curl --retry 5 --retry-delay 60 -w ' %{http_code}' "https://$SERVICE_NAME.azurewebsites.net/api/health" | tail -1 | sed 's/.*\(...\)/\1/'`
+            if [[ $OK_200 == 200  ]]; then exit 0; else exit 1; fi
+
+workflows:
+  pull_requests:
+    unless:
+      equal: [ "main", << pipeline.git.branch >> ]
+    jobs:
+      - build_test
+
+  deploy_infrastructure:
+    when:
+      equal: [ "main", << pipeline.git.branch >> ]
+    jobs:
+      - build_test:
+          filters:
+            branches:
+              only:
+                - main
+      - build_image:
+          name: build_image_labs
+          context:
+            - ayuda-acr
+          requires:
+            - build_test
+      - push_image:
+          name: push_image_labs
+          context:
+            - ayuda-acr-preview
+          requires:
+            - build_image_labs
+      - terraform_deployment_plan:
+          name: terraform_deployment_plan_labs
+          requires:
+            - push_image_labs
+          context:
+            - ayuda-acr-preview
+            - az-resources
+            - az-resources-labs
+            - az-service-account-labs
+      - terraform_deployment_apply:
+          name: terraform_deployment_apply_labs
+          requires:
+            - terraform_deployment_plan_labs
+          context:
+            - ayuda-acr-preview
+            - az-resources
+            - az-resources-labs
+            - az-service-account-labs
+      - service_health_check:
+          name: service_health_check_labs
+          requires:
+            - terraform_deployment_apply_labs
+          context:
+            - az-resources-labs
+      - terraform_deployment_plan:
+          name: terraform_deployment_plan_preview
+          requires:
+            - service_health_check_labs
+          context:
+            - ayuda-acr-preview
+            - az-resources
+            - az-resources-preview
+            - az-service-account-preview
+      - terraform_deployment_apply:
+          name: terraform_deployment_apply_preview
+          requires:
+            - terraform_deployment_plan_preview
+          context:
+            - ayuda-acr-preview
+            - az-resources
+            - az-resources-preview
+            - az-service-account-preview
+      - service_health_check:
+          name: service_health_check_preview
+          requires:
+            - terraform_deployment_apply_preview
+          context:
+            - az-resources-preview
+      - push_image:
+          name: push_image_cloud
+          requires:
+            - service_health_check_preview
+          context:
+            - ayuda-acr
+      - terraform_deployment_plan:
+          name: terraform_deployment_plan_cloud
+          requires:
+            - push_image_cloud
+          context:
+            - ayuda-acr
+            - az-resources
+            - az-resources-cloud
+            - az-service-account-cloud
+      - hold:
+          name: require_approval_plan_cloud
+          type: approval
+          requires:
+            - terraform_deployment_plan_cloud
+      - terraform_deployment_apply:
+          name: terraform_deployment_apply_cloud
+          requires:
+            - require_approval_plan_cloud
+          context:
+            - ayuda-acr
+            - az-resources
+            - az-resources-cloud
+            - az-service-account-cloud
